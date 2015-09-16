@@ -1,0 +1,38 @@
+First R Markdown
+===============
+
+Here is the link to the [official Markdown documentation][1]  
+Here is a link to [writing on Github][2]  
+
+[1]: http://daringfireball.net/projects/markdown/syntax "Markdown Documentation"
+[2]: https://help.github.com/articles/writing-on-github/ "Github Markdown"
+
+**Hey** *let's load some data*  
+
+```{r}
+data(airquality)
+
+head(airquality)
+```
+
+What about a few plots  
+1. Ozone vs. Solar Radiation  
+2. Ozone vs. Month  
+
+```{r}
+par(mfrow=c(1,2))
+plot(Ozone ~ Solar.R, airquality)
+plot(Ozone ~ Month, airquality)
+```
+
+Add a regression  
+
+```{r}
+library(stats)
+model <- lm(Ozone ~ Solar.R, airquality)
+
+with(airquality, plot(Solar.R, Ozone, pch = 15, main = "Airquality correlation to Solar Radiance"))
+abline(model, lwd = 1, col = "red")
+legend(x=25, y=160, pch = 15, bty = "o", col = "red", legend = "Regression Line")
+```
+
