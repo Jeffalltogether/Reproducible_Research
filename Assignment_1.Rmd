@@ -1,8 +1,5 @@
----
-title: "Peer Assessment 1"
-author: "J. Thatcher"
-output: html_document
----
+#Peer Assessment 1
+###J. Thatcher  
 
 ###Loading and preprocessing the data
 
