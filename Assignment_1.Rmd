@@ -1,0 +1,112 @@
+---
+title: "Peer Assessment 1"
+author: "J. Thatcher"
+output: html_document
+---
+
+###Loading and preprocessing the data
+
+1. Load data  
+2. Remove missing data  
+```{r}
+setwd("C:/Users/jeffthatcher/Cloud Drive/RRepos/Reproducible_Research")
+
+activityDataFull <- read.table("C:/Users/jeffthatcher/Cloud Drive/RRepos/repdata-data-activity/activity.csv", sep = ",", header = TRUE)
+
+activityData <- na.omit(activityDataFull)
+```
+
+###Mean total number of steps taken per day  
+
+1. Mean total number of steps taken per day  
+2. Histogram of total steps per day  
+3. Mean and median of the total number of steps taken per day  
+
+```{r warning=FALSE}
+meanDailySteps <- as.data.frame(as.matrix(tapply(activityData$steps, activityData$date, sum)))
+
+colnames(meanDailySteps) <- c("steps")
+
+library(ggplot2)
+ggplot(meanDailySteps, aes(x=steps)) + geom_histogram(binwidth = 1000)
+
+meanSteps <- mean(na.omit(meanDailySteps$steps))
+medianSteps <- median(na.omit(meanDailySteps$steps))
+```
+
+Mean number of steps per day | Median number of steps per day
+-----------------------------|-------------------------------
+**`r meanSteps`**            | **`r medianSteps`**  
+
+###The average daily activity pattern  
+
+1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)  
+
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?  
+
+```{r}
+intervalSteps <- aggregate(activityData$steps, list(activityData$interval), mean)
+
+colnames(intervalSteps) <- c("interval", "steps")
+
+ggplot(intervalSteps, aes(interval, steps)) + geom_line()
+
+mostSteps <- intervalSteps[which.max(intervalSteps$steps), ]
+```
+The interval with the most number of steps on average is **`r mostSteps[,1]`**  
+
+###Imputing missing values  
+
+1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r}
+missingNAN<- is.na(activityDataFull$steps)
+totalMissing <- sum(as.numeric(missingNAN))
+```
+The total number of missing values is **`r totalMissing`**
+
+
+2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+*I used the mean for that 5-minute interval as the strategy to fill the missing values*
+
+3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r}
+for (i in 1:length(activityDataFull$steps)){
+        if (is.na(activityDataFull$steps[i] == TRUE)){        
+        activityDataFull$steps[i] <- intervalSteps$steps[match(activityDataFull$interval[i], intervalSteps$interval)]  
+        } 
+}
+```
+
+4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
+
+```{r warning=FALSE}
+meanDailyStepsFull <- as.data.frame(as.matrix(tapply(activityDataFull$steps, activityDataFull$date, sum)))
+
+colnames(meanDailyStepsFull) <- c("steps_Modified")
+
+ggplot(meanDailyStepsFull, aes(x=steps_Modified)) + geom_histogram(binwidth = 1000)
+
+meanStepsFull <- mean(meanDailyStepsFull$steps_Modified)
+medianStepsFull <- median(meanDailyStepsFull$steps_Modified)
+```
+
+Mean number of steps per day | Median number of steps per day
+-----------------------------|-------------------------------
+**`r meanStepsFull`**        | **`r medianStepsFull`**  
+
+Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?  
+
+*By plotting the initial histogram and the histogram where the missing data was filled-in, we can see the difference achieved by replacing the missing data.  The only noticable change is an increase in the number of days where 10,000 - 11,000 steps occurred.  Otherwise, the two histograms are identical.* 
+
+```{r warning=FALSE}
+DF <- merge(meanDailySteps, meanDailyStepsFull)
+library(reshape2)
+DF <- melt(DF)
+
+ggplot(DF, aes(x=value)) + geom_histogram(binwidth = 1000) + facet_grid(.~ variable)
+```
+
+
