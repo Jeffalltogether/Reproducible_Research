@@ -6,7 +6,7 @@
 1. Load data  
 2. Remove missing data  
 ```{r}
-setwd("C:/Users/jeffthatcher/Cloud Drive/RRepos/Reproducible_Research")
+setwd("C:/Users/jeffthatcher/Cloud Drive/RRepos/Reproducible_Research/RepData_PeerAssessment1")
 
 activityDataFull <- read.table("C:/Users/jeffthatcher/Cloud Drive/RRepos/repdata-data-activity/activity.csv", sep = ",", header = TRUE)
 
