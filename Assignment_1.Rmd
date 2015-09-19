@@ -22,10 +22,10 @@ activityData <- na.omit(activityDataFull)
 ```{r warning=FALSE}
 meanDailySteps <- as.data.frame(as.matrix(tapply(activityData$steps, activityData$date, sum)))
 
-colnames(meanDailySteps) <- c("steps")
+colnames(meanDailySteps) <- c("Total_Steps_Per_Day")
 
 library(ggplot2)
-ggplot(meanDailySteps, aes(x=steps)) + geom_histogram(binwidth = 1000)
+ggplot(meanDailySteps, aes(x=Total_Steps_Per_Day)) + geom_histogram(binwidth = 1000, fill = "sky blue", colour = "grey60", size=0.2)
 
 meanSteps <- mean(na.omit(meanDailySteps$steps))
 medianSteps <- median(na.omit(meanDailySteps$steps))
@@ -44,9 +44,9 @@ Mean number of steps per day | Median number of steps per day
 ```{r}
 intervalSteps <- aggregate(activityData$steps, list(activityData$interval), mean)
 
-colnames(intervalSteps) <- c("interval", "steps")
+colnames(intervalSteps) <- c("interval", "Average_Steps")
 
-ggplot(intervalSteps, aes(interval, steps)) + geom_line()
+ggplot(intervalSteps, aes(interval, Average_Steps)) + geom_line()
 
 mostSteps <- intervalSteps[which.max(intervalSteps$steps), ]
 ```
@@ -72,7 +72,7 @@ The total number of missing values is **`r totalMissing`**
 ```{r}
 for (i in 1:length(activityDataFull$steps)){
         if (is.na(activityDataFull$steps[i] == TRUE)){        
-        activityDataFull$steps[i] <- intervalSteps$steps[match(activityDataFull$interval[i], intervalSteps$interval)]  
+        activityDataFull$steps[i] <- intervalSteps$Average_Steps[match(activityDataFull$interval[i], intervalSteps$interval)]  
         } 
 }
 ```
@@ -82,9 +82,9 @@ for (i in 1:length(activityDataFull$steps)){
 ```{r warning=FALSE}
 meanDailyStepsFull <- as.data.frame(as.matrix(tapply(activityDataFull$steps, activityDataFull$date, sum)))
 
-colnames(meanDailyStepsFull) <- c("steps_Modified")
+colnames(meanDailyStepsFull) <- c("Total_Steps_Per_Day_Modified")
 
-ggplot(meanDailyStepsFull, aes(x=steps_Modified)) + geom_histogram(binwidth = 1000)
+ggplot(meanDailyStepsFull, aes(x=Total_Steps_Per_Day_Modified)) + geom_histogram(binwidth = 1000, fill = "sky blue", colour = "grey60", size=0.2)
 
 meanStepsFull <- mean(meanDailyStepsFull$steps_Modified)
 medianStepsFull <- median(meanDailyStepsFull$steps_Modified)
@@ -102,8 +102,45 @@ Do these values differ from the estimates from the first part of the assignment?
 DF <- merge(meanDailySteps, meanDailyStepsFull)
 library(reshape2)
 DF <- melt(DF)
+colnames(DF) <- c("variable", "Total_Steps_Per_Day")
 
-ggplot(DF, aes(x=value)) + geom_histogram(binwidth = 1000) + facet_grid(.~ variable)
+ggplot(DF, aes(x=Total_Steps_Per_Day)) + geom_histogram(binwidth = 1000, fill = "orange", colour = "grey60", size=0.2) + facet_grid(.~ variable)
 ```
 
+###Are there differences in activity patterns between weekdays and weekends?
 
+1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r}
+#add the day-of-week column
+activityDataFull$day <- weekdays(as.Date(activityDataFull$date), abbreviate=FALSE)
+
+#convert day-of-week column vales to Weekday or Weekend
+for (i in 1:length(activityDataFull$day)){
+if (activityDataFull$day[i] == "Saturday" || activityDataFull$day[i] == "Sunday"){
+        activityDataFull$day[i] <- "Weekend"
+} else {
+        activityDataFull$day[i] <- "Weekday"
+}
+}
+
+# calculate the average interval steps for weekend and weekdays separetely and then combine.
+activityDataWeekend <- subset(activityDataFull, day == "Weekend")
+        
+activityDataWeekday <- subset(activityDataFull, day == "Weekday")
+
+activityIntervalStepsWeekend <- aggregate(activityDataWeekend$steps, list(activityDataWeekend$interval), mean)
+colnames(activityIntervalStepsWeekend) <- c("interval", "Weekend_Steps")
+
+activityIntervalStepsWeekday <- aggregate(activityDataWeekday$steps, list(activityDataWeekday$interval), mean)
+colnames(activityIntervalStepsWeekday) <- c("interval", "Weekday_Steps")
+
+DF2 <- merge(activityIntervalStepsWeekday, activityIntervalStepsWeekend)
+DF2 <- melt(DF2, id = "interval")
+
+# plot
+colnames(DF2) <- c("interval", "variable", "Average_Steps")
+ggplot(DF2, aes(interval,  Average_Steps)) + geom_line() + facet_grid(variable ~ .)
+```
