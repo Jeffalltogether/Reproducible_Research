@@ -1,0 +1,119 @@
+#Human and economic costs of severe weather events in the US 
+###J. Thatcher
+###September 27, 2015
+
+##1.0 Synopsis
+In this short analysis we will attempt to describe approx. 90,000 weather events in the US from 1950 to 2011 to answer the following two questions:
+
+1. Across the United States, which types of weather events are most harmful with respect to population health?  
+
+2. Across the United States, which types of weather events have the greatest economic consequences?
+
+The raw data for this analysis comes from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+Fatalities and injuries reported in the database are the result of factors influenced directly by the weather event (i.e., hydro-meteorological event) itself, according to the [Storm Data Documentation][1]. For example, the weather event may cause the fatality/injury directly, such as a thunderstorm wind gust causing a moving vehicle to roll over. Alternatively, the weather event may directly affect the surrounding environment that would lead to an incident, such as blizzard winds topple a tree onto a person.  
+
+Economic data is reported in the forms of property damage incurred during a weather event, and damage to agricultural crops. Both factors are reported in terms of the US dollar value at the time of the damage.  
+
+##2.0 Data Processing 
+The raw data for this analysis comes from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. The format is a compressed .csv, which can be read with the R function `read.csv()`. The construction of certain variables within these data is available in NOAA's [Storm Data Documentation][1].  
+
+[1]: https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf
+
+```{r cache = TRUE}
+StormData <- read.csv("C:/Users/jeffthatcher/Cloud Drive/RRepos/repdata-data-activity/repdata-data-StormData.csv.bz2")
+```
+
+The Data contains the following information about over 90,000 storms in the US between 1950 and 2011.  
+
+```{r} 
+as.data.frame(colnames(StormData))  
+```
+
+
+###*2.1 Health Impact of Weather Events*
+According to the [Storm Data Documentation][1], following columns contain data that would indicate an impact on health: **Injuries** and **Fatalities**. These data were extracted from the larger dataset. Next, the sum of injuries and fatalities was calculated by the type of weather event. A bar plot was generated to depict the results of this analysis.
+
+ 
+```{r warning=FALSE}
+library(ggplot2)
+library(reshape2)
+
+healthData <- subset(StormData, select = c("EVTYPE", "INJURIES", "FATALITIES"))
+totalInjuries <- aggregate(healthData$INJURIES, list(healthData$EVTYPE), sum)
+colnames(totalInjuries) <- c("EVENT_TYPE", "INJURIES")
+totalInjuries <- subset(totalInjuries, INJURIES >= 100)
+
+totalFatalities <- aggregate(healthData$FATALITIES, list(healthData$EVTYPE), sum)
+colnames(totalFatalities) <- c("EVENT_TYPE", "FATALITIES")
+totalFatalities <- subset(totalFatalities, FATALITIES >= 10)
+
+
+healthDataTotals <- merge(totalInjuries, totalFatalities, by = "EVENT_TYPE")
+healthDataTotals <- melt(healthDataTotals, id = "EVENT_TYPE")
+#healthDataTotals <- subset(healthDataTotals, value > 10)
+
+library(scales)
+
+Plot1 <- ggplot(healthDataTotals, aes(x = EVENT_TYPE, y = value, fill = variable))  + geom_bar(colour = "black", stat= "identity", position = "dodge") + scale_fill_brewer(palette="Pastel1") + theme(axis.text.x = element_text(angle=60, hjust=1)) + ggtitle("Weather events resulting in 10 or more deaths or 100 or more injuries") + ylab("Number of people") + scale_y_log10(breaks = c(1e+1, 5e+1, 1e+2, 5e+2, 1e+3, 5e+3, 1e+4, 5e+4, 1e+5, 5e+5, 1e+6))
+
+rm(healthData)
+```
+
+###*2.2 Economic Impact of Weather Events*
+According to the [Storm Data Documentation][1], following columns contain data that would indicate an impact on the US economy: **PROPDMG**; **PROPDMGEXP**; **CROPDMG**; **CROPDMGEXP**. These columns indicate the following:  
+*PROPDMG - property damage in $ rounded to three 3 significant digits  
+*PROPDMGEXP -  alphabetical characters used to signify magnitude of damage include: "K" for thousands, "M" for millions, and "B" for billions  
+*CROPDMG - crop damage in $ rounded to three 3 significant digits  
+*CROPDMGEXP - alphabetical characters used to signify magnitude of damage include: "K" for thousands, "M" for millions, and "B" for billions  
+
+To complete this analysis we pulled these two damage variables, crop and property damage, from the database and calculated the total damages that occurred by each type of weather event.  
+
+```{r cache=TRUE}
+EconomicData <- subset(StormData, select = c("EVTYPE", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP"))
+```
+Because the economic information is contained in two columns in the database, we must combine the information from these columns to compute the economic data for both Property Damage and Crop Damage. Here we calculate the Property Damage:  
+```{r cache=TRUE,warning=FALSE}
+library(dplyr)
+
+EconomicData <- mutate(EconomicData, Property_Damage = ifelse(PROPDMGEXP == "K" | PROPDMGEXP == "k", PROPDMG * 1000, ifelse(PROPDMGEXP == "M" | PROPDMGEXP == "m", PROPDMG * 1000000, ifelse(PROPDMGEXP == "B", PROPDMG * 1000000000,0))))
+```
+We'll do the same for the Crop Damage:  
+```{r cache=TRUE}
+EconomicData <- mutate(EconomicData, Crop_Damage = ifelse(CROPDMGEXP == "K" |CROPDMGEXP == "k" , CROPDMG * 1000, ifelse(CROPDMGEXP == "M" | CROPDMGEXP == "m", CROPDMG * 1000000, ifelse(CROPDMGEXP == "B", CROPDMG * 1000000000,0))))
+```
+Now we can make a plot of these data:  
+```{r}
+
+totalPropDmg <- aggregate(EconomicData$Property_Damage, list(EconomicData$EVTYPE), sum)
+colnames(totalPropDmg) <- c("EVENT_TYPE", "PROPERTY_DAMAGE")
+totalPropDmg <- subset(totalPropDmg, PROPERTY_DAMAGE >= 1e+9)
+
+totalCropDmg <- aggregate(EconomicData$Crop_Damage, list(EconomicData$EVTYPE), sum)
+colnames(totalCropDmg) <- c("EVENT_TYPE", "CROP_DAMAGE")
+totalCropDmg <- subset(totalCropDmg, CROP_DAMAGE >= 1e+9)
+
+economicDmgTotals <- merge(totalPropDmg, totalCropDmg, by = "EVENT_TYPE")
+economicDmgTotals <- melt(economicDmgTotals, id = "EVENT_TYPE")
+
+Plot2 <- ggplot(economicDmgTotals, aes(x = EVENT_TYPE, y = value, fill = variable))  + geom_bar(colour = "black", stat= "identity", position = "dodge") + scale_fill_brewer(palette="Pastel1") + theme(axis.text.x = element_text(angle=60, hjust=1)) + ggtitle("Weather events resulting in $1.0 Billion or more in Property Damage or $1.0 Billion or more in Crop Damage") + ylab("Dollars ($)") + scale_y_continuous(breaks = c(1e+6, 1e+10, 2e+10, 4e+10, 6e+10, 8e+10, 1e+11))
+
+rm(EconomicData)
+```
+
+##3.0 Results
+With these 90,000 weather event data from 1950 to 2011, we can identify the health and economic impact of reported weather events.  
+
+With respect to population health, we assessed the reported number of injuries and fatalities available in the database. The results show that by a significant margin, **Tornadoes cause the highest impact on population health** (Plot 1). This is likely a result of their frequency, reoccurring multiple times each year, and they appear in populated areas. However, they may not be considered the most "deadly". For instance, both Avalanches and Rip Tides have a ratio of Fatality to Injury that is greater than 1. In this analysis of injury/fatality, we do not account for the impact of fatality vs injury, in other words, they are considered to be of equal impact.  
+
+```{r fig.width=12, fig.height=8}
+Plot1  
+```
+The second part of this analysis we demonstrate destructive weather events from an economic standpoint. The result of this analysis show that **Floods** cause the most property damage in the timeframe of our data (plot2). Flood is followed by Hurricanes, Flash Floods, and Hail in property damage. For crop damage, **Drought** is reported as the most economically destructive weather event. **Overall, Flood is by far the most economically destructive weather event since 1950**.  In this analysis of economic costs we do not account for inflation, which would likely have major impact on these results.  
+
+```{r fig.width=12, fig.height=8}
+Plot2  
+```
+
+
+
